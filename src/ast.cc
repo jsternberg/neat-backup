@@ -62,7 +62,7 @@ namespace ast {
   }
 
   void Return::Codegen(IRBuilder<>& irb) {
-    irb.CreateRet(expr_->Codegen(irb));
+    irb.CreateRet(expr_ ? expr_->Codegen(irb) : NULL);
   }
 
   Value *IntegerLiteral::Codegen(IRBuilder<>& irb) {
