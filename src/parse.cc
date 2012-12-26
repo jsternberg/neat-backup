@@ -112,6 +112,11 @@ namespace {
     if (!lexer_.ExpectToken(Lexer::Token::BRACKET, "{"))
       return NULL;
 
+    ast::Statement *stmt = NULL;
+    while ((stmt = Statement()) != NULL) {
+      f->Append(stmt);
+    }
+
     if (!lexer_.ExpectToken(Lexer::Token::BRACKET, "}"))
       return NULL;
     return f;
@@ -150,11 +155,23 @@ namespace {
     ast::If *if_ = new ast::If(expr);
     ast::Statement *stmt = NULL;
     while ((stmt = Statement()) != NULL) {
-      if_->Append(stmt);
+      if_->AppendThen(stmt);
     }
 
     if (!lexer_.ExpectToken(Lexer::Token::BRACKET, "}"))
       return NULL;
+
+    if (lexer_.ExpectToken(Lexer::Token::ELSE)) {
+      if (!lexer_.ExpectToken(Lexer::Token::BRACKET, "{"))
+        return NULL;
+
+      while ((stmt = Statement()) != NULL) {
+        if_->AppendElse(stmt);
+      }
+
+      if (!lexer_.ExpectToken(Lexer::Token::BRACKET, "}"))
+        return NULL;
+    }
     return if_;
   }
 

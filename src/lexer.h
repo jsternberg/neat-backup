@@ -14,6 +14,7 @@ struct Lexer {
       BRACKET,
       SEMICOLON,
       IF,
+      ELSE,
       FN,
       RETURN,
       ARROW,
@@ -31,6 +32,22 @@ struct Lexer {
     Type type_;
   };
 
+  void drop_front(size_t n) {
+    contents_ = contents_.drop_front(n);
+  }
+
+  void drop_until(const char *new_) {
+    drop_front(new_-contents_.data());
+  }
+
+  void get_token(const char *new_, Token::Type type) {
+    cur_.type_ = type;
+    size_t n = new_-contents_.data();
+    cur_.val_ = contents_.substr(0, n);
+    drop_front(n);
+  }
+
+  void SkipWhitespace();
   void ReadToken();
   Token PeekToken() const { return cur_; }
 

@@ -16,8 +16,13 @@ rule link
     command = $cxx $in $ldflags -o $out
     description = link $out
 
+rule re2c
+    command = re2c -b -i --no-generation-date -o $out $in
+    description = re2c $out
+
 build $builddir/neatc.o: cxx src/neatc.cc
 build $builddir/ast.o: cxx src/ast.cc
+build src/lexer.cc: re2c src/lexer.in.cc
 build $builddir/lexer.o: cxx src/lexer.cc
 build $builddir/parse.o: cxx src/parse.cc
 build $builddir/util.o: cxx src/util.cc

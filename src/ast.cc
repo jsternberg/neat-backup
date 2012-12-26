@@ -25,7 +25,7 @@ namespace ast {
     llvm::Function *f = start->getParent();
     BasicBlock *then = BasicBlock::Create(ctx);
     BasicBlock *else_ = BasicBlock::Create(ctx);
-    BasicBlock *end = BasicBlock::Create(ctx);
+    BasicBlock *end = NULL;
 
     Value *expr = irb.CreateBitCast(expr_->Codegen(irb), Type::getInt8Ty(ctx));
     Value *cond = irb.CreateICmpNE(expr, irb.getInt8(0));
@@ -34,19 +34,31 @@ namespace ast {
     f->getBasicBlockList().push_back(then);
     irb.SetInsertPoint(then);
 
-    for (Statement *stmt : stmts_) {
+    for (Statement *stmt : then_stmts_) {
       stmt->Codegen(irb);
     }
-    if (then->getTerminator() == NULL)
+    if (then->getTerminator() == NULL) {
+      if (!end)
+        end = BasicBlock::Create(ctx);
       irb.CreateBr(end);
+    }
 
     f->getBasicBlockList().push_back(else_);
     irb.SetInsertPoint(else_);
-    if (else_->getTerminator() == NULL)
-      irb.CreateBr(end);
 
-    f->getBasicBlockList().push_back(end);
-    irb.SetInsertPoint(end);
+    for (Statement *stmt : else_stmts_) {
+      stmt->Codegen(irb);
+    }
+    if (else_->getTerminator() == NULL) {
+      if (!end)
+        end = BasicBlock::Create(ctx);
+      irb.CreateBr(end);
+    }
+
+    if (end) {
+      f->getBasicBlockList().push_back(end);
+      irb.SetInsertPoint(end);
+    }
   }
 
   void Return::Codegen(IRBuilder<>& irb) {

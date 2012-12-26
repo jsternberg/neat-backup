@@ -46,10 +46,12 @@ namespace ast {
 
   struct If : Statement {
     Expression *expr_;
-    std::vector<Statement*> stmts_;
+    std::vector<Statement*> then_stmts_;
+    std::vector<Statement*> else_stmts_;
     If(Expression *expr) : expr_(expr) {}
     virtual void Codegen(llvm::IRBuilder<>&);
-    void Append(Statement *stmt) { stmts_.push_back(stmt); }
+    void AppendThen(Statement *stmt) { then_stmts_.push_back(stmt); }
+    void AppendElse(Statement *stmt) { else_stmts_.push_back(stmt); }
   };
 
   struct Return : Statement {

@@ -2,3 +2,4 @@
 /neatc
 *.swp
 *~
+/src/lexer.cc
