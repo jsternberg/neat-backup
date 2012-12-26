@@ -1,6 +1,7 @@
 #pragma once
 
 #include <llvm/ADT/StringRef.h>
+#include <vector>
 
 struct Lexer {
   Lexer(llvm::StringRef contents) : contents_(contents) {}
@@ -51,6 +52,12 @@ struct Lexer {
   void ReadToken();
   Token PeekToken() const { return cur_; }
 
+  Token GetToken() {
+    Token t = PeekToken();
+    ReadToken();
+    return t;
+  }
+
   bool ExpectToken(Token::Type type, llvm::StringRef val) {
     if (val != cur_.val_)
       return false;
@@ -64,6 +71,20 @@ struct Lexer {
     return retval;
   }
 
+  void Save() {
+    stack_.push_back(contents_);
+  }
+
+  void Load() {
+    contents_ = stack_.back();
+    stack_.pop_back();
+  }
+
+  void Drop() {
+    stack_.pop_back();
+  }
+
   llvm::StringRef contents_;
+  std::vector<llvm::StringRef> stack_;
   Token cur_;
 };

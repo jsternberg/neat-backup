@@ -184,13 +184,28 @@ namespace {
   ast::Expression *Parser::Primary() {
     Lexer::Token t = lexer_.PeekToken();
     switch (t.type_) {
+      case Lexer::Token::OPER:
+        if (t.val_ == "+" || t.val_ == "-") {
+          lexer_.Save();
+          lexer_.ReadToken();
+          Lexer::Token t2 = lexer_.GetToken();
+          if (t2.type_ == Lexer::Token::INT) {
+            int value = atoi(t2.val_.str().c_str());
+            if (t.val_ == "-")
+              value = 0 - value;
+            lexer_.Drop();
+            return new ast::IntegerLiteral(value);
+          } else {
+            lexer_.Load();
+          }
+        }
+        return NULL;
       case Lexer::Token::INT:
         lexer_.ReadToken();
         return new ast::IntegerLiteral(atoi(t.val_.str().c_str()));
       default:
-        break;
+        return NULL;
     }
-    return NULL;
   }
 
   ast::Expression *Parser::Expression() {
