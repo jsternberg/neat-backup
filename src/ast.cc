@@ -27,8 +27,8 @@ namespace ast {
     BasicBlock *else_ = BasicBlock::Create(ctx);
     BasicBlock *end = NULL;
 
-    Value *expr = irb.CreateBitCast(expr_->Codegen(irb), Type::getInt1Ty(ctx));
-    Value *cond = irb.CreateICmpNE(expr, irb.getInt1(0));
+    Value *expr = expr_->Codegen(irb);
+    Value *cond = irb.CreateICmpNE(expr, ConstantInt::get(expr->getType(), 0));
     irb.CreateCondBr(cond, then, else_);
 
     f->getBasicBlockList().push_back(then);
