@@ -29,6 +29,7 @@ namespace {
     ast::TopLevel *TopLevel();
     ast::TopLevel *Function();
     ast::Statement *Statement();
+    ast::Statement *Var();
     ast::Statement *If();
     ast::Statement *Return();
     ast::Expression *Primary();
@@ -127,6 +128,8 @@ namespace {
     for (;;) {
       stmt = If();
       if (stmt) return stmt;
+      stmt = Var();
+      if (stmt) break;
       stmt = Return();
       if (stmt) break;
       {
@@ -142,6 +145,25 @@ namespace {
     if (!lexer_.ExpectToken(Lexer::Token::SEMICOLON))
       return NULL;
     return stmt;
+  }
+
+  ast::Statement *Parser::Var() {
+    if (!lexer_.ExpectToken(Lexer::Token::VAR))
+      return NULL;
+
+    Lexer::Token ident = lexer_.PeekToken();
+    if (ident.type_ != Lexer::Token::IDENT)
+      return NULL;
+    lexer_.ReadToken();
+
+    if (!lexer_.ExpectToken(Lexer::Token::OPER, "="))
+      return NULL;
+
+    ast::Expression *expr = Expression();
+    if (!expr)
+      return NULL;
+
+    return new ast::VariableAssignment(ident.val_, expr);
   }
 
   ast::Statement *Parser::If() {
@@ -203,6 +225,9 @@ namespace {
       case Lexer::Token::INT:
         lexer_.ReadToken();
         return new ast::IntegerLiteral(atoi(t.val_.str().c_str()));
+      case Lexer::Token::IDENT:
+        lexer_.ReadToken();
+        return new ast::Variable(t.val_);
       default:
         return NULL;
     }

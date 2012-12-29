@@ -2,6 +2,7 @@
 #include "ast.h"
 #include "lexer.h"
 #include "parse.h"
+#include "scope.h"
 #include "util.h"
 #include <llvm/LLVMContext.h>
 #include <llvm/Support/IRBuilder.h>
@@ -20,9 +21,10 @@ int main(int argc, char* argv[]) {
 
   llvm::LLVMContext ctx;
   llvm::Module module(argv[1], ctx);
+  std::shared_ptr<Scope> scope = std::shared_ptr<Scope>(new Scope);
 
   TopLevel *ast = Parse(ctx, contents);
-  ast->Codegen(module);
+  ast->Codegen(module, scope);
 
   llvm::raw_fd_ostream fd(fileno(stdout), false);
   module.print(fd, NULL);

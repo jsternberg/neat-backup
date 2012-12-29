@@ -1,5 +1,6 @@
 #pragma once
 
+#include "scope.h"
 #include <llvm/Module.h>
 #include <llvm/Value.h>
 #include <llvm/Support/IRBuilder.h>
@@ -9,20 +10,20 @@
 
 namespace ast {
   struct TopLevel {
-    virtual void Codegen(llvm::Module&) = 0;
+    virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>) = 0;
   };
 
   struct Statement {
-    virtual void Codegen(llvm::IRBuilder<>&) = 0;
+    virtual void Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>) = 0;
   };
 
   struct Expression {
-    virtual llvm::Value *Codegen(llvm::IRBuilder<>&) = 0;
+    virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>) = 0;
   };
 
   struct Program : TopLevel {
     std::vector<TopLevel*> stmts_;
-    virtual void Codegen(llvm::Module&);
+    virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>);
     void Append(TopLevel *stmt) { stmts_.push_back(stmt); }
   };
 
@@ -32,15 +33,23 @@ namespace ast {
     std::vector<llvm::Type*> args_;
     std::vector<Statement*> stmts_;
     Function(llvm::StringRef name) : name_(name), rettype_(NULL) {}
-    virtual void Codegen(llvm::Module&);
+    virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>);
     void Append(Statement *stmt) { stmts_.push_back(stmt); }
+  };
+
+  struct VariableAssignment : Statement {
+    llvm::StringRef name_;
+    Expression *expr_;
+    VariableAssignment(llvm::StringRef name, Expression *expr)
+      : name_(name), expr_(expr) {}
+    virtual void Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
   };
 
   struct ExpressionStatement : Statement {
     Expression *expr_;
     ExpressionStatement(Expression *expr) : expr_(expr) {}
-    virtual void Codegen(llvm::IRBuilder<>& irb) {
-      (void) expr_->Codegen(irb);
+    virtual void Codegen(llvm::IRBuilder<>& irb, std::shared_ptr<Scope> scope) {
+      (void) expr_->Codegen(irb, scope);
     }
   };
 
@@ -49,7 +58,7 @@ namespace ast {
     std::vector<Statement*> then_stmts_;
     std::vector<Statement*> else_stmts_;
     If(Expression *expr) : expr_(expr) {}
-    virtual void Codegen(llvm::IRBuilder<>&);
+    virtual void Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
     void AppendThen(Statement *stmt) { then_stmts_.push_back(stmt); }
     void AppendElse(Statement *stmt) { else_stmts_.push_back(stmt); }
   };
@@ -57,13 +66,19 @@ namespace ast {
   struct Return : Statement {
     Expression *expr_;
     Return(Expression *expr) : expr_(expr) {}
-    virtual void Codegen(llvm::IRBuilder<>&);
+    virtual void Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
   };
 
   struct IntegerLiteral : Expression {
     int value_;
     IntegerLiteral(int value) : value_(value) {}
-    virtual llvm::Value *Codegen(llvm::IRBuilder<>&);
+    virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
+  };
+
+  struct Variable : Expression {
+    llvm::StringRef ident_;
+    Variable(llvm::StringRef ident) : ident_(ident) {}
+    virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
   };
 
   struct BinaryOperation : Expression {
@@ -71,6 +86,6 @@ namespace ast {
     llvm::StringRef oper_;
     BinaryOperation(llvm::StringRef oper, Expression *LHS, Expression *RHS)
       : oper_(oper), LHS_(LHS), RHS_(RHS) {}
-    virtual llvm::Value *Codegen(llvm::IRBuilder<>&);
+    virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
   };
 }

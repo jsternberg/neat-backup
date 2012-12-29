@@ -17,6 +17,7 @@ struct Lexer {
       IF,
       ELSE,
       FN,
+      VAR,
       RETURN,
       ARROW,
       PAREN,
