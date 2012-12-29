@@ -46,7 +46,7 @@ def cxx(src):
     objs.extend(n.build('$builddir/%s.o' % src, 'cxx', 'src/%s.cc' % src))
 
 n.build('src/lexer.cc', 're2c', 'src/lexer.in.cc')
-for x in ['neatc', 'ast', 'lexer', 'parse', 'util']:
+for x in ['neatc', 'ast', 'lexer', 'parse', 'scope', 'util']:
     cxx(x)
 
 n.build('neatc', 'link', objs)
