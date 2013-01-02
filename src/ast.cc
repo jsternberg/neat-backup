@@ -83,24 +83,33 @@ namespace ast {
   }
 
   Value *Variable::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
-    auto val = scope->get(ident_);
+    auto val = lvalue(scope);
     return val ? irb.CreateLoad(val) : NULL;
   }
 }
 
 namespace ast {
   Value *BinaryOperation::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
-    Value *LHS = LHS_->Codegen(irb, scope);
-    Value *RHS = RHS_->Codegen(irb, scope);
-
     switch (oper_.front()) {
-      case '+':
+      case '+': {
+        Value *LHS = LHS_->Codegen(irb, scope);
+        Value *RHS = RHS_->Codegen(irb, scope);
         return irb.CreateAdd(LHS, RHS);
-      case '-':
+      }
+      case '-': {
+        Value *LHS = LHS_->Codegen(irb, scope);
+        Value *RHS = RHS_->Codegen(irb, scope);
         return irb.CreateSub(LHS, RHS);
+      }
+      case '=': {
+        AllocaInst *ptr = LHS_->lvalue(scope);
+        if (!ptr) return NULL;
+        Value *RHS = RHS_->Codegen(irb, scope);
+        irb.CreateStore(RHS, ptr);
+        return RHS;
+      }
       default:
         return NULL;
     }
-    return irb.CreateAdd(LHS, RHS);
   }
 }

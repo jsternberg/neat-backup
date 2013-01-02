@@ -19,6 +19,7 @@ namespace ast {
 
   struct Expression {
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>) = 0;
+    virtual llvm::AllocaInst *lvalue(std::shared_ptr<Scope>) const { return NULL; }
   };
 
   struct Program : TopLevel {
@@ -79,6 +80,9 @@ namespace ast {
     llvm::StringRef ident_;
     Variable(llvm::StringRef ident) : ident_(ident) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
+    virtual llvm::AllocaInst *lvalue(std::shared_ptr<Scope> scope) const {
+      return scope->get(ident_);
+    }
   };
 
   struct BinaryOperation : Expression {
