@@ -5,6 +5,14 @@
 using namespace std;
 
 namespace {
+  /** Get precedence value of an operator token.
+      A higher number has a higher precedence and will be grouped
+      together first. If a number has the same precedence value,
+      then the grouping may be from left-to-right or right-to-left.
+
+      If the number returned is even, then the grouping is left-to-right.
+      If the number returned is odd, then the grouping is right-to-left.
+  */
   int GetTokPrecedence(const Lexer::Token& token) {
     switch (token.type_) {
       case Lexer::Token::OPER:
@@ -13,8 +21,10 @@ namespace {
             return 10;
           case '*': case '/':
             return 20;
-          default:
+          case '=':
             return 5;
+          default:
+            return -1;
         }
       default:
         return -1;
@@ -254,7 +264,7 @@ namespace {
 
       t = lexer_.PeekToken();
       int next_prec = GetTokPrecedence(t);
-      if (tok_prec < next_prec) {
+      if (tok_prec < next_prec || (tok_prec == next_prec && tok_prec % 2)) {
         RHS = BinOpRHS(tok_prec, RHS);
         if (!RHS) return NULL;
       }
