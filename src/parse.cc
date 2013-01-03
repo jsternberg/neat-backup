@@ -232,6 +232,15 @@ namespace {
           }
         }
         return NULL;
+      case Lexer::Token::PAREN: {
+        if (t.val_ != "(") return NULL;
+        lexer_.ReadToken();
+
+        ast::Expression *expr = Expression();
+        if (!expr || !lexer_.ExpectToken(Lexer::Token::PAREN, ")"))
+          return NULL;
+        return expr;
+      }
       case Lexer::Token::INT:
         lexer_.ReadToken();
         return new ast::IntegerLiteral(atoi(t.val_.str().c_str()));
