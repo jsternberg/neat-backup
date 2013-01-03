@@ -86,30 +86,59 @@ namespace ast {
     auto val = lvalue(scope);
     return val ? irb.CreateLoad(val) : NULL;
   }
-}
 
-namespace ast {
   Value *BinaryOperation::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
-    switch (oper_.front()) {
-      case '+': {
-        Value *LHS = LHS_->Codegen(irb, scope);
-        Value *RHS = RHS_->Codegen(irb, scope);
-        return irb.CreateAdd(LHS, RHS);
-      }
-      case '-': {
-        Value *LHS = LHS_->Codegen(irb, scope);
-        Value *RHS = RHS_->Codegen(irb, scope);
-        return irb.CreateSub(LHS, RHS);
-      }
-      case '=': {
-        AllocaInst *ptr = LHS_->lvalue(scope);
-        if (!ptr) return NULL;
-        Value *RHS = RHS_->Codegen(irb, scope);
-        irb.CreateStore(RHS, ptr);
-        return RHS;
-      }
-      default:
-        return NULL;
+    char ch1 = oper_[0];
+    char ch2 = oper_.size() > 1 ? oper_[1] : 0;
+    switch (ch1) {
+      case '+':
+        switch (ch2) {
+          case 0: {
+            Value *LHS = LHS_->Codegen(irb, scope);
+            Value *RHS = RHS_->Codegen(irb, scope);
+            return irb.CreateAdd(LHS, RHS);
+          }
+          case '=': {
+            AllocaInst *ptr = LHS_->lvalue(scope);
+            if (!ptr) return NULL;
+            Value *val = irb.CreateAdd(LHS_->Codegen(irb, scope),
+                                       RHS_->Codegen(irb, scope));
+            irb.CreateStore(val, ptr);
+            return val;
+          }
+        }
+      case '-':
+        switch (ch2) {
+          case 0: {
+            Value *LHS = LHS_->Codegen(irb, scope);
+            Value *RHS = RHS_->Codegen(irb, scope);
+            return irb.CreateSub(LHS, RHS);
+          }
+          case '=': {
+            AllocaInst *ptr = LHS_->lvalue(scope);
+            if (!ptr) return NULL;
+            Value *val = irb.CreateSub(LHS_->Codegen(irb, scope),
+                                       RHS_->Codegen(irb, scope));
+            irb.CreateStore(val, ptr);
+            return val;
+          }
+        }
+      case '=':
+        switch (ch2) {
+          case 0: {
+            AllocaInst *ptr = LHS_->lvalue(scope);
+            if (!ptr) return NULL;
+            Value *RHS = RHS_->Codegen(irb, scope);
+            irb.CreateStore(RHS, ptr);
+            return RHS;
+          }
+          case '=': {
+            Value *LHS = LHS_->Codegen(irb, scope);
+            Value *RHS = RHS_->Codegen(irb, scope);
+            return irb.CreateICmpEQ(LHS, RHS);
+          }
+        }
     }
+    return NULL;
   }
 }

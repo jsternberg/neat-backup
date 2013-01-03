@@ -34,8 +34,11 @@ void Lexer::ReadToken() {
     [()]   { get_token(p, Token::PAREN); return; }
     "->"   { get_token(p, Token::ARROW); return; }
     ";"    { get_token(p, Token::SEMICOLON); return; }
-    "+"[+=] { get_token(p, Token::OPER); return; }
-    [+-/*=] { get_token(p, Token::OPER); return; }
+    "+"[+=]? { get_token(p, Token::OPER); return; }
+    "-"[-=]? { get_token(p, Token::OPER); return; }
+    "*"[=]?  { get_token(p, Token::OPER); return; }
+    "/"[=]?  { get_token(p, Token::OPER); return; }
+    "="[=]?  { get_token(p, Token::OPER); return; }
     ident  { get_token(p, Token::IDENT); return; }
     integer { get_token(p, Token::INT); return; }
     [^] { fprintf(stderr, "invalid character: '%c'\n", *(p-1)); continue; }

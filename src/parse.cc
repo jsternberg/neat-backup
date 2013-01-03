@@ -14,20 +14,43 @@ namespace {
       If the number returned is odd, then the grouping is right-to-left.
   */
   int GetTokPrecedence(const Lexer::Token& token) {
-    switch (token.type_) {
-      case Lexer::Token::OPER:
-        switch (token.val_.front()) {
-          case '+': case '-':
-            return 10;
-          case '*': case '/':
-            return 20;
-          case '=':
-            return 5;
-          default:
-            return -1;
+    if (token.type_ != Lexer::Token::OPER)
+      return -1;
+
+    char ch1 = token.val_[0];
+    char ch2 = token.val_.size() > 1 ? token.val_[1] : 0;
+    switch (ch1) {
+      case '+':
+        switch (ch2) {
+          case 0:   return 20;
+          case '=': return 5;
+          default:  return -1;
         }
-      default:
-        return -1;
+      case '-':
+        switch (ch2) {
+          case 0:   return 20;
+          case '=': return 5;
+          default:  return -1;
+        }
+      case '*':
+        switch (ch2) {
+          case 0:   return 40;
+          case '=': return 5;
+          default:  return -1;
+        }
+      case '/':
+        switch (ch2) {
+          case 0:   return 40;
+          case '=': return 5;
+          default:  return -1;
+        }
+      case '=':
+        switch (ch2) {
+          case 0:   return 5;
+          case '=': return 10;
+          default:  return -1;
+        }
+      default: return -1;
     }
   }
 
