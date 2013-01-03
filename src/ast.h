@@ -85,9 +85,17 @@ namespace ast {
     }
   };
 
-  struct BinaryOperation : Expression {
-    Expression *LHS_, *RHS_;
+  struct UnaryOperation : Expression {
     llvm::StringRef oper_;
+    Expression *expr_;
+    UnaryOperation(llvm::StringRef oper, Expression *expr)
+      : oper_(oper), expr_(expr) {}
+    virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);
+  };
+
+  struct BinaryOperation : Expression {
+    llvm::StringRef oper_;
+    Expression *LHS_, *RHS_;
     BinaryOperation(llvm::StringRef oper, Expression *LHS, Expression *RHS)
       : oper_(oper), LHS_(LHS), RHS_(RHS) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, std::shared_ptr<Scope>);

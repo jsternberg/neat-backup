@@ -87,6 +87,38 @@ namespace ast {
     return val ? irb.CreateLoad(val) : NULL;
   }
 
+  Value *UnaryOperation::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
+    char ch1 = oper_[0];
+    char ch2 = oper_.size() > 1 ? oper_[1] : 0;
+    switch (ch1) {
+      case '+':
+        switch (ch2) {
+          case 0:
+            return expr_->Codegen(irb, scope);
+          case '+': {
+            AllocaInst *ptr = expr_->lvalue(scope);
+            if (!ptr) return NULL;
+            Value *val = irb.CreateAdd(expr_->Codegen(irb, scope), irb.getInt32(1));
+            irb.CreateStore(val, ptr);
+            return val;
+          }
+        }
+      case '-':
+        switch (ch2) {
+          case 0:
+            return irb.CreateNeg(expr_->Codegen(irb, scope));
+          case '-': {
+            AllocaInst *ptr = expr_->lvalue(scope);
+            if (!ptr) return NULL;
+            Value *val = irb.CreateSub(expr_->Codegen(irb, scope), irb.getInt32(1));
+            irb.CreateStore(val, ptr);
+            return val;
+          }
+        }
+    }
+    return NULL;
+  }
+
   Value *BinaryOperation::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
     char ch1 = oper_[0];
     char ch2 = oper_.size() > 1 ? oper_[1] : 0;
