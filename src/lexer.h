@@ -4,7 +4,8 @@
 #include <vector>
 
 struct Lexer {
-  Lexer(llvm::StringRef contents) : contents_(contents) {}
+  Lexer(llvm::StringRef contents)
+    : contents_(contents), start_(contents.begin()) {}
 
   struct Token {
     enum Type {
@@ -86,7 +87,16 @@ struct Lexer {
     stack_.pop_back();
   }
 
+  struct LineInfo {
+    llvm::StringRef context_;
+    size_t line_;
+    size_t col_;
+  };
+
+  LineInfo GetLineInfo() const;
+
   llvm::StringRef contents_;
+  llvm::StringRef::iterator start_;
   std::vector<llvm::StringRef> stack_;
   Token cur_;
 };

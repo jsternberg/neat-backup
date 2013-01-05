@@ -53,3 +53,25 @@ void Lexer::SkipWhitespace() {
     ++n;
   drop_front(n);
 }
+
+Lexer::LineInfo Lexer::GetLineInfo() const {
+  const char *ptr = cur_.val_.data();
+  const char *p = start_;
+  const char *pbeg = p;
+  const char *q = contents_.end();
+  size_t line = 1;
+  while (p != ptr) {
+    if (*p == '\n') {
+      line += 1;
+      pbeg = p + 1;
+    }
+    p += 1;
+  }
+
+  // need to find the end of the line
+  const char *pend = p;
+  while (pend != q && *pend != '\n')
+    pend += 1;
+
+  return { llvm::StringRef(pbeg, pend-pbeg), line, static_cast<size_t>(p-pbeg)+1 };
+}

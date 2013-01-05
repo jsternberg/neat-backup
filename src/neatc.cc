@@ -3,7 +3,6 @@
 #include "lexer.h"
 #include "parse.h"
 #include "scope.h"
-#include "util.h"
 #include <llvm/LLVMContext.h>
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Support/raw_ostream.h>
@@ -17,16 +16,17 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  string contents = ReadFile(argv[1]);
+  Parser parser(argv[1]);
+  Messages errs = parser.ParseFile(argv[1]);
+  for (auto& msg : errs.messages()) {
+    fprintf(stderr, "%s\n", msg.msg().c_str());
+  }
 
-  llvm::LLVMContext ctx;
-  llvm::Module module(argv[1], ctx);
-  std::shared_ptr<Scope> scope = std::shared_ptr<Scope>(new Scope);
-
-  TopLevel *ast = Parse(ctx, contents);
-  ast->Codegen(module, scope);
+  if (!errs) {
+    return 1;
+  }
 
   llvm::raw_fd_ostream fd(fileno(stdout), false);
-  module.print(fd, NULL);
+  parser.module().print(fd, NULL);
   return 0;
 }
