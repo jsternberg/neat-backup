@@ -66,6 +66,7 @@ namespace {
     ast::Statement *If();
     ast::Statement *Return();
     ast::Expression *Primary();
+    ast::Expression *PrimaryRHS(ast::Expression *LHS);
     ast::Expression *Expression();
     ast::Expression *BinOpRHS(int prec, ast::Expression *LHS);
 
@@ -253,12 +254,32 @@ namespace {
       }
       case Lexer::Token::INT:
         lexer_.ReadToken();
-        return new ast::IntegerLiteral(atoi(t.val_.str().c_str()));
+        return PrimaryRHS(new ast::IntegerLiteral(atoi(t.val_.str().c_str())));
       case Lexer::Token::IDENT:
         lexer_.ReadToken();
-        return new ast::Variable(t.val_);
+        return PrimaryRHS(new ast::Variable(t.val_));
       default:
         return NULL;
+    }
+  }
+
+  ast::Expression *Parser::PrimaryRHS(ast::Expression *LHS) {
+    for (;;) {
+      Lexer::Token t = lexer_.PeekToken();
+      switch (t.type_) {
+        case Lexer::Token::PAREN: {
+          if (t.val_ == "(") {
+            lexer_.ReadToken();
+            if (!lexer_.ExpectToken(Lexer::Token::PAREN, ")"))
+              return NULL;
+            LHS = new ast::CallOperation(LHS);
+            break;
+          }
+          return NULL;
+        }
+        default:
+          return LHS;
+      }
     }
   }
 

@@ -17,18 +17,18 @@ namespace ast {
     IRBuilder<> irb(BasicBlock::Create(ctx, "entry", f));
     auto innerScope = scope->derive();
     for (Statement *stmt : stmts_) {
-      stmt->Codegen(irb, innerScope);
+      stmt->Codegen(irb, m, innerScope);
     }
   }
 
-  void VariableAssignment::Codegen(llvm::IRBuilder<>& irb, shared_ptr<Scope> scope) {
+  void VariableAssignment::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     LLVMContext& ctx = irb.getContext();
     llvm::AllocaInst *inst = irb.CreateAlloca(Type::getInt32Ty(ctx));
-    irb.CreateStore(expr_->Codegen(irb, scope), inst);
+    irb.CreateStore(expr_->Codegen(irb, m, scope), inst);
     scope->define(name_, inst);
   }
 
-  void If::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
+  void If::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     LLVMContext& ctx = irb.getContext();
     BasicBlock *start = irb.GetInsertBlock();
     llvm::Function *f = start->getParent();
@@ -36,7 +36,7 @@ namespace ast {
     BasicBlock *else_ = BasicBlock::Create(ctx);
     BasicBlock *end = NULL;
 
-    Value *expr = expr_->Codegen(irb, scope);
+    Value *expr = expr_->Codegen(irb, m, scope);
     Value *cond = irb.CreateICmpNE(expr, ConstantInt::get(expr->getType(), 0));
     irb.CreateCondBr(cond, then, else_);
 
@@ -45,7 +45,7 @@ namespace ast {
 
     auto thenScope = scope->derive();
     for (Statement *stmt : then_stmts_) {
-      stmt->Codegen(irb, thenScope);
+      stmt->Codegen(irb, m, thenScope);
     }
 
     if (then->getTerminator() == NULL) {
@@ -59,7 +59,7 @@ namespace ast {
 
     auto elseScope = scope->derive();
     for (Statement *stmt : else_stmts_) {
-      stmt->Codegen(irb, elseScope);
+      stmt->Codegen(irb, m, elseScope);
     }
 
     if (else_->getTerminator() == NULL) {
@@ -74,31 +74,35 @@ namespace ast {
     }
   }
 
-  void Return::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
-    irb.CreateRet(expr_ ? expr_->Codegen(irb, scope) : NULL);
+  void Return::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
+    irb.CreateRet(expr_ ? expr_->Codegen(irb, m, scope) : NULL);
   }
 
-  Value *IntegerLiteral::Codegen(IRBuilder<>& irb, shared_ptr<Scope>) {
+  Value *IntegerLiteral::Codegen(IRBuilder<>& irb, Module&, shared_ptr<Scope>) {
     return irb.getInt32(value_);
   }
 
-  Value *Variable::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
+  Value *Variable::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
+    llvm::Function *f = m.getFunction(ident_);
+    if (f)
+      return f;
+
     auto val = lvalue(scope);
     return val ? irb.CreateLoad(val) : NULL;
   }
 
-  Value *UnaryOperation::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
+  Value *UnaryOperation::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     char ch1 = oper_[0];
     char ch2 = oper_.size() > 1 ? oper_[1] : 0;
     switch (ch1) {
       case '+':
         switch (ch2) {
           case 0:
-            return expr_->Codegen(irb, scope);
+            return expr_->Codegen(irb, m, scope);
           case '+': {
             AllocaInst *ptr = expr_->lvalue(scope);
             if (!ptr) return NULL;
-            Value *val = irb.CreateAdd(expr_->Codegen(irb, scope), irb.getInt32(1));
+            Value *val = irb.CreateAdd(expr_->Codegen(irb, m, scope), irb.getInt32(1));
             irb.CreateStore(val, ptr);
             return val;
           }
@@ -106,11 +110,11 @@ namespace ast {
       case '-':
         switch (ch2) {
           case 0:
-            return irb.CreateNeg(expr_->Codegen(irb, scope));
+            return irb.CreateNeg(expr_->Codegen(irb, m, scope));
           case '-': {
             AllocaInst *ptr = expr_->lvalue(scope);
             if (!ptr) return NULL;
-            Value *val = irb.CreateSub(expr_->Codegen(irb, scope), irb.getInt32(1));
+            Value *val = irb.CreateSub(expr_->Codegen(irb, m, scope), irb.getInt32(1));
             irb.CreateStore(val, ptr);
             return val;
           }
@@ -119,22 +123,22 @@ namespace ast {
     return NULL;
   }
 
-  Value *BinaryOperation::Codegen(IRBuilder<>& irb, shared_ptr<Scope> scope) {
+  Value *BinaryOperation::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     char ch1 = oper_[0];
     char ch2 = oper_.size() > 1 ? oper_[1] : 0;
     switch (ch1) {
       case '+':
         switch (ch2) {
           case 0: {
-            Value *LHS = LHS_->Codegen(irb, scope);
-            Value *RHS = RHS_->Codegen(irb, scope);
+            Value *LHS = LHS_->Codegen(irb, m, scope);
+            Value *RHS = RHS_->Codegen(irb, m, scope);
             return irb.CreateAdd(LHS, RHS);
           }
           case '=': {
             AllocaInst *ptr = LHS_->lvalue(scope);
             if (!ptr) return NULL;
-            Value *val = irb.CreateAdd(LHS_->Codegen(irb, scope),
-                                       RHS_->Codegen(irb, scope));
+            Value *val = irb.CreateAdd(LHS_->Codegen(irb, m, scope),
+                                       RHS_->Codegen(irb, m, scope));
             irb.CreateStore(val, ptr);
             return val;
           }
@@ -142,15 +146,15 @@ namespace ast {
       case '-':
         switch (ch2) {
           case 0: {
-            Value *LHS = LHS_->Codegen(irb, scope);
-            Value *RHS = RHS_->Codegen(irb, scope);
+            Value *LHS = LHS_->Codegen(irb, m, scope);
+            Value *RHS = RHS_->Codegen(irb, m, scope);
             return irb.CreateSub(LHS, RHS);
           }
           case '=': {
             AllocaInst *ptr = LHS_->lvalue(scope);
             if (!ptr) return NULL;
-            Value *val = irb.CreateSub(LHS_->Codegen(irb, scope),
-                                       RHS_->Codegen(irb, scope));
+            Value *val = irb.CreateSub(LHS_->Codegen(irb, m, scope),
+                                       RHS_->Codegen(irb, m, scope));
             irb.CreateStore(val, ptr);
             return val;
           }
@@ -160,17 +164,22 @@ namespace ast {
           case 0: {
             AllocaInst *ptr = LHS_->lvalue(scope);
             if (!ptr) return NULL;
-            Value *RHS = RHS_->Codegen(irb, scope);
+            Value *RHS = RHS_->Codegen(irb, m, scope);
             irb.CreateStore(RHS, ptr);
             return RHS;
           }
           case '=': {
-            Value *LHS = LHS_->Codegen(irb, scope);
-            Value *RHS = RHS_->Codegen(irb, scope);
+            Value *LHS = LHS_->Codegen(irb, m, scope);
+            Value *RHS = RHS_->Codegen(irb, m, scope);
             return irb.CreateICmpEQ(LHS, RHS);
           }
         }
     }
     return NULL;
+  }
+
+  llvm::Value *CallOperation::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
+    llvm::Function *f = llvm::dyn_cast<llvm::Function>(expr_->Codegen(irb, m, scope));
+    return f ? irb.CreateCall(f) : NULL;
   }
 }
