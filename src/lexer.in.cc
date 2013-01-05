@@ -33,6 +33,7 @@ void Lexer::ReadToken() {
     [{}]   { get_token(p, Token::BRACKET); return; }
     [()]   { get_token(p, Token::PAREN); return; }
     "->"   { get_token(p, Token::ARROW); return; }
+    ":"    { get_token(p, Token::COLON); return; }
     ";"    { get_token(p, Token::SEMICOLON); return; }
     "+"[+=]? { get_token(p, Token::OPER); return; }
     "-"[-=]? { get_token(p, Token::OPER); return; }

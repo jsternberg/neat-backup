@@ -31,7 +31,8 @@ namespace ast {
   struct Function : TopLevel {
     llvm::StringRef name_;
     llvm::Type *rettype_;
-    std::vector<llvm::Type*> args_;
+    std::vector<llvm::StringRef> name_args_;
+    std::vector<llvm::Type*> type_args_;
     std::vector<Statement*> stmts_;
     Function(llvm::StringRef name) : name_(name), rettype_(NULL) {}
     virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>);
@@ -103,6 +104,7 @@ namespace ast {
 
   struct CallOperation : Expression {
     Expression *expr_;
+    std::vector<Expression*> args_;
     CallOperation(Expression *expr)
       : expr_(expr) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);

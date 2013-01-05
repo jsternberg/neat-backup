@@ -13,6 +13,7 @@ struct Lexer {
       INT,
       FLOAT,
       BRACKET,
+      COLON,
       SEMICOLON,
       IF,
       ELSE,

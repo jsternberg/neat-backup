@@ -12,10 +12,22 @@ namespace ast {
 
   void Function::Codegen(Module& m, shared_ptr<Scope> scope) {
     LLVMContext& ctx = m.getContext();
-    FunctionType *prototype = FunctionType::get(rettype_ ? rettype_ : Type::getVoidTy(ctx), args_, false);
+    FunctionType *prototype = FunctionType::get(rettype_ ? rettype_ : Type::getVoidTy(ctx), type_args_, false);
     llvm::Function *f = static_cast<llvm::Function*>(m.getOrInsertFunction(name_, prototype));
+
     IRBuilder<> irb(BasicBlock::Create(ctx, "entry", f));
     auto innerScope = scope->derive();
+    llvm::Function::arg_iterator args = f->arg_begin();
+    for (auto& name : name_args_) {
+      llvm::Value *v = args++;
+      if (!name.empty()) {
+        v->setName(name);
+        llvm::AllocaInst *arg = irb.CreateAlloca(v->getType());
+        irb.CreateStore(v, arg);
+        innerScope->define(name, arg);
+      }
+    }
+
     for (Statement *stmt : stmts_) {
       stmt->Codegen(irb, m, innerScope);
     }
@@ -180,6 +192,13 @@ namespace ast {
 
   llvm::Value *CallOperation::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     llvm::Function *f = llvm::dyn_cast<llvm::Function>(expr_->Codegen(irb, m, scope));
-    return f ? irb.CreateCall(f) : NULL;
+    if (!f || f->getArgumentList().size() != args_.size())
+      return NULL;
+
+    std::vector<llvm::Value*> args;
+    for (auto& expr : args_) {
+      args.push_back(expr->Codegen(irb, m, scope));
+    }
+    return f ? irb.CreateCall(f, args) : NULL;
   }
 }

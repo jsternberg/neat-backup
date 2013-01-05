@@ -124,11 +124,21 @@ namespace {
           break;
         lexer_.ReadToken();
 
+        llvm::StringRef name;
+        if (lexer_.ExpectToken(Lexer::Token::COLON)) {
+          name = t.val_;
+          t = lexer_.PeekToken();
+          if (t.type_ != Lexer::Token::IDENT)
+            return NULL;
+          lexer_.ReadToken();
+        }
+
         llvm::Type *type = TranslateType(t.val_);
         if (!type)
           return NULL;
 
-        f->args_.push_back(type);
+        f->name_args_.push_back(name);
+        f->type_args_.push_back(type);
         need_comma = true;
       }
 
@@ -270,12 +280,25 @@ namespace {
         case Lexer::Token::PAREN: {
           if (t.val_ == "(") {
             lexer_.ReadToken();
-            if (!lexer_.ExpectToken(Lexer::Token::PAREN, ")"))
-              return NULL;
-            LHS = new ast::CallOperation(LHS);
+
+            auto function = new ast::CallOperation(LHS);
+            bool need_comma = false;
+            for (;;) {
+              if (lexer_.ExpectToken(Lexer::Token::PAREN, ")"))
+                break;
+
+              if (need_comma) {
+                if (!lexer_.ExpectToken(Lexer::Token::OPER, ","))
+                  return NULL;
+              }
+
+              need_comma = true;
+              function->args_.push_back(Expression());
+            }
+            LHS = function;
             break;
           }
-          return NULL;
+          return LHS;
         }
         default:
           return LHS;
