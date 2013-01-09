@@ -1,9 +1,10 @@
 #pragma once
 
-#include "ast.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include <llvm/LLVMContext.h>
+#include <llvm/Module.h>
 
 struct Message {
   enum Level {

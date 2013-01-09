@@ -1,5 +1,6 @@
 
 #include "ast.h"
+#include "scope.h"
 using std::shared_ptr;
 using namespace llvm;
 
@@ -101,6 +102,10 @@ namespace ast {
 
     auto val = lvalue(scope);
     return val ? irb.CreateLoad(val) : NULL;
+  }
+
+  AllocaInst *Variable::lvalue(std::shared_ptr<Scope> scope) const {
+    return scope->get(ident_);
   }
 
   Value *UnaryOperation::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {

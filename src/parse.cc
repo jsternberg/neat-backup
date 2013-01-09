@@ -1,4 +1,5 @@
 
+#include "ast.h"
 #include "lexer.h"
 #include "parse.h"
 #include "scope.h"

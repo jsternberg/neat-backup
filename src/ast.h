@@ -1,12 +1,13 @@
 #pragma once
 
-#include "scope.h"
 #include <llvm/Module.h>
 #include <llvm/Value.h>
 #include <llvm/Support/IRBuilder.h>
 #include <string>
 #include <string.h>
 #include <vector>
+
+struct Scope;
 
 namespace ast {
   struct TopLevel {
@@ -85,9 +86,7 @@ namespace ast {
     llvm::StringRef ident_;
     Variable(llvm::StringRef ident) : ident_(ident) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
-    virtual llvm::AllocaInst *lvalue(std::shared_ptr<Scope> scope) const {
-      return scope->get(ident_);
-    }
+    virtual llvm::AllocaInst *lvalue(std::shared_ptr<Scope> scope) const;
   };
 
   struct UnaryOperation : Expression {
