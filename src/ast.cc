@@ -5,7 +5,7 @@ using namespace llvm;
 
 namespace ast {
   void Program::Codegen(Module& m, shared_ptr<Scope> scope) {
-    for (TopLevel *stmt : stmts_) {
+    for (auto& stmt : stmts_) {
       stmt->Codegen(m, scope);
     }
   }
@@ -28,7 +28,7 @@ namespace ast {
       }
     }
 
-    for (Statement *stmt : stmts_) {
+    for (auto& stmt : stmts_) {
       stmt->Codegen(irb, m, innerScope);
     }
   }
@@ -56,7 +56,7 @@ namespace ast {
     irb.SetInsertPoint(then);
 
     auto thenScope = scope->derive();
-    for (Statement *stmt : then_stmts_) {
+    for (auto& stmt : then_stmts_) {
       stmt->Codegen(irb, m, thenScope);
     }
 
@@ -70,7 +70,7 @@ namespace ast {
     irb.SetInsertPoint(else_);
 
     auto elseScope = scope->derive();
-    for (Statement *stmt : else_stmts_) {
+    for (auto& stmt : else_stmts_) {
       stmt->Codegen(irb, m, elseScope);
     }
 

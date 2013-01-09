@@ -24,28 +24,27 @@ private:
 
 struct MessagesImpl;
 struct Messages {
-  Messages();
-
   void Error(const std::string& msg);
   void Warning(const std::string& msg);
   void Info(const std::string& msg);
   size_t Count(Message::Level level = Message::ERROR) const;
 
-  const std::vector<Message>& messages() const;
+  const std::vector<Message>& messages() const { return msgs_; }
 
   operator bool const () {
     return Count() == 0;
   }
 
-  std::shared_ptr<MessagesImpl> impl_;
+private:
+  std::vector<Message> msgs_;
 };
 
 struct Parser {
   Parser(const std::string& name)
     : module_(name, ctx_) {}
 
-  Messages Parse(const std::string& contents, const std::string& name = "<stdin>");
-  Messages ParseFile(const std::string& path);
+  std::unique_ptr<Messages> Parse(const std::string& contents, const std::string& name = "<stdin>");
+  std::unique_ptr<Messages> ParseFile(const std::string& path);
 
   llvm::LLVMContext& ctx() { return ctx_; }
   llvm::Module& module() { return module_; }
@@ -54,5 +53,3 @@ private:
   llvm::LLVMContext ctx_;
   llvm::Module module_;
 };
-
-ast::TopLevel *Parse(llvm::LLVMContext& ctx, const std::string& contents);

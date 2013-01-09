@@ -8,54 +8,25 @@
 #include <vector>
 using namespace std;
 
-struct MessagesImpl {
-  void Error(const string& msg) {
-    msgs_.push_back(Message(msg, Message::ERROR));
-  }
-
-  void Warning(const string& msg) {
-    msgs_.push_back(Message(msg, Message::WARNING));
-  }
-
-  void Info(const string& msg) {
-    msgs_.push_back(Message(msg, Message::INFO));
-  }
-
-  size_t Count(Message::Level level) const {
-    size_t count = 0;
-    for (auto& msg : msgs_) {
-      if (msg.level() <= level)
-        ++count;
-    }
-    return count;
-  }
-
-  const vector<Message>& messages() const { return msgs_; }
-
-private:
-  vector<Message> msgs_;
-};
-
-Messages::Messages() : impl_(new MessagesImpl) {}
-
 void Messages::Error(const string& msg) {
-  impl_->Error(msg);
+  msgs_.push_back(Message(msg, Message::ERROR));
 }
 
 void Messages::Warning(const string& msg) {
-  impl_->Warning(msg);
+  msgs_.push_back(Message(msg, Message::WARNING));
 }
 
 void Messages::Info(const string& msg) {
-  impl_->Info(msg);
+  msgs_.push_back(Message(msg, Message::INFO));
 }
 
 size_t Messages::Count(Message::Level level) const {
-  return impl_->Count(level);
-}
-
-const std::vector<Message>& Messages::messages() const {
-  return impl_->messages();
+  size_t count = 0;
+  for (auto& msg : msgs_) {
+    if (msg.level() <= level)
+      ++count;
+  }
+  return count;
 }
 
 namespace {
@@ -113,17 +84,17 @@ namespace {
                const string& filename, const string& contents)
       : ctx_(ctx), filename_(filename), lexer_(contents), errs_(errs) {}
 
-    ast::TopLevel *Parse();
-    ast::TopLevel *TopLevel();
-    ast::TopLevel *Function();
-    ast::Statement *Statement();
-    ast::Statement *Var();
-    ast::Statement *If();
-    ast::Statement *Return();
-    ast::Expression *Primary();
-    ast::Expression *PrimaryRHS(ast::Expression *LHS);
-    ast::Expression *Expression();
-    ast::Expression *BinOpRHS(int prec, ast::Expression *LHS);
+    unique_ptr<ast::TopLevel> Parse();
+    unique_ptr<ast::TopLevel> TopLevel();
+    unique_ptr<ast::TopLevel> Function();
+    unique_ptr<ast::Statement> Statement();
+    unique_ptr<ast::Statement> Var();
+    unique_ptr<ast::Statement> If();
+    unique_ptr<ast::Statement> Return();
+    unique_ptr<ast::Expression> Primary();
+    unique_ptr<ast::Expression> PrimaryRHS(unique_ptr<ast::Expression> LHS);
+    unique_ptr<ast::Expression> Expression();
+    unique_ptr<ast::Expression> BinOpRHS(int prec, unique_ptr<ast::Expression> LHS);
 
     bool ExpectToken(Lexer::Token::Type type, llvm::StringRef val);
     bool ExpectToken(Lexer::Token::Type type);
@@ -149,28 +120,28 @@ namespace {
     Messages& errs_;
   };
 
-  ast::TopLevel *FileParser::Parse() {
+  unique_ptr<ast::TopLevel> FileParser::Parse() {
     lexer_.ReadToken();
-    ast::Program *program = new ast::Program();
-    ast::TopLevel *stmt = NULL;
+    auto program = unique_ptr<ast::Program>(new ast::Program());
+    unique_ptr<ast::TopLevel> stmt = NULL;
     while ((stmt = TopLevel()) != NULL) {
-      program->Append(stmt);
+      program->Append(move(stmt));
     }
-    return lexer_.ExpectToken(Lexer::Token::TEOF) ? program : NULL;
+    return lexer_.ExpectToken(Lexer::Token::TEOF) ? move(program) : NULL;
   }
 
-  ast::TopLevel *FileParser::TopLevel() {
-    ast::TopLevel *stmt = Function();
+  unique_ptr<ast::TopLevel> FileParser::TopLevel() {
+    unique_ptr<ast::TopLevel> stmt = Function();
     if (stmt) return stmt;
     return NULL;
   }
 
-  ast::TopLevel *FileParser::Function() {
+  unique_ptr<ast::TopLevel> FileParser::Function() {
     if (!lexer_.ExpectToken(Lexer::Token::FN))
       return NULL;
 
     Lexer::Token t = lexer_.PeekToken();
-    ast::Function *f = new ast::Function(t.val_);
+    auto f = unique_ptr<ast::Function>(new ast::Function(t.val_));
     lexer_.ReadToken();
 
     if (lexer_.ExpectToken(Lexer::Token::PAREN, "(")) {
@@ -219,18 +190,18 @@ namespace {
     if (!lexer_.ExpectToken(Lexer::Token::BRACKET, "{"))
       return NULL;
 
-    ast::Statement *stmt = NULL;
+    unique_ptr<ast::Statement> stmt = NULL;
     while ((stmt = Statement()) != NULL) {
-      f->Append(stmt);
+      f->Append(move(stmt));
     }
 
     if (!ExpectToken(Lexer::Token::BRACKET, "}"))
       return NULL;
-    return f;
+    return move(f);
   }
 
-  ast::Statement *FileParser::Statement() {
-    ast::Statement *stmt = NULL;
+  unique_ptr<ast::Statement> FileParser::Statement() {
+    unique_ptr<ast::Statement> stmt = NULL;
     for (;;) {
       stmt = If();
       if (stmt) return stmt;
@@ -239,9 +210,9 @@ namespace {
       stmt = Return();
       if (stmt) break;
       {
-        ast::Expression *expr = Expression();
+        auto expr = Expression();
         if (expr) {
-          stmt = new ast::ExpressionStatement(expr);
+          stmt = unique_ptr<ast::Statement>(new ast::ExpressionStatement(move(expr)));
           break;
         }
       }
@@ -253,7 +224,7 @@ namespace {
     return stmt;
   }
 
-  ast::Statement *FileParser::Var() {
+  unique_ptr<ast::Statement> FileParser::Var() {
     if (!lexer_.ExpectToken(Lexer::Token::VAR))
       return NULL;
 
@@ -265,25 +236,24 @@ namespace {
     if (!ExpectToken(Lexer::Token::OPER, "="))
       return NULL;
 
-    ast::Expression *expr = Expression();
+    auto expr = Expression();
     if (!expr)
       return NULL;
 
-    return new ast::VariableAssignment(ident.val_, expr);
+    return unique_ptr<ast::Statement>(new ast::VariableAssignment(ident.val_, move(expr)));
   }
 
-  ast::Statement *FileParser::If() {
+  unique_ptr<ast::Statement> FileParser::If() {
     if (!lexer_.ExpectToken(Lexer::Token::IF))
       return NULL;
 
-    ast::Expression *expr = Expression();
+    auto if_ = unique_ptr<ast::If>(new ast::If(Expression()));
     if (!ExpectToken(Lexer::Token::BRACKET, "{"))
       return NULL;
 
-    ast::If *if_ = new ast::If(expr);
-    ast::Statement *stmt = NULL;
+    unique_ptr<ast::Statement> stmt = NULL;
     while ((stmt = Statement()) != NULL) {
-      if_->AppendThen(stmt);
+      if_->AppendThen(move(stmt));
     }
 
     if (!ExpectToken(Lexer::Token::BRACKET, "}"))
@@ -294,48 +264,48 @@ namespace {
         return NULL;
 
       while ((stmt = Statement()) != NULL) {
-        if_->AppendElse(stmt);
+        if_->AppendElse(move(stmt));
       }
 
       if (!ExpectToken(Lexer::Token::BRACKET, "}"))
         return NULL;
     }
-    return if_;
+    return move(if_);
   }
 
-  ast::Statement *FileParser::Return() {
+  unique_ptr<ast::Statement> FileParser::Return() {
     if (!lexer_.ExpectToken(Lexer::Token::RETURN))
       return NULL;
-    return new ast::Return(Expression());
+    return unique_ptr<ast::Statement>(new ast::Return(Expression()));
   }
 
-  ast::Expression *FileParser::Primary() {
+  unique_ptr<ast::Expression> FileParser::Primary() {
     Lexer::Token t = lexer_.PeekToken();
     switch (t.type_) {
       case Lexer::Token::OPER:
         lexer_.ReadToken();
-        return new ast::UnaryOperation(t.val_, Primary());
+        return unique_ptr<ast::Expression>(new ast::UnaryOperation(t.val_, Primary()));
       case Lexer::Token::PAREN: {
         if (t.val_ != "(") return NULL;
         lexer_.ReadToken();
 
-        ast::Expression *expr = Expression();
+        auto expr = Expression();
         if (!expr || !ExpectToken(Lexer::Token::PAREN, ")"))
           return NULL;
         return expr;
       }
       case Lexer::Token::INT:
         lexer_.ReadToken();
-        return PrimaryRHS(new ast::IntegerLiteral(atoi(t.val_.str().c_str())));
+        return PrimaryRHS(unique_ptr<ast::Expression>(new ast::IntegerLiteral(atoi(t.val_.str().c_str()))));
       case Lexer::Token::IDENT:
         lexer_.ReadToken();
-        return PrimaryRHS(new ast::Variable(t.val_));
+        return PrimaryRHS(unique_ptr<ast::Expression>(new ast::Variable(t.val_)));
       default:
         return NULL;
     }
   }
 
-  ast::Expression *FileParser::PrimaryRHS(ast::Expression *LHS) {
+  unique_ptr<ast::Expression> FileParser::PrimaryRHS(unique_ptr<ast::Expression> LHS) {
     for (;;) {
       Lexer::Token t = lexer_.PeekToken();
       switch (t.type_) {
@@ -343,7 +313,7 @@ namespace {
           if (t.val_ == "(") {
             lexer_.ReadToken();
 
-            auto function = new ast::CallOperation(LHS);
+            auto function = unique_ptr<ast::CallOperation>(new ast::CallOperation(move(LHS)));
             bool need_comma = false;
             for (;;) {
               if (lexer_.ExpectToken(Lexer::Token::PAREN, ")"))
@@ -357,7 +327,7 @@ namespace {
               need_comma = true;
               function->args_.push_back(Expression());
             }
-            LHS = function;
+            LHS = move(function);
             break;
           }
           return LHS;
@@ -368,13 +338,13 @@ namespace {
     }
   }
 
-  ast::Expression *FileParser::Expression() {
-    ast::Expression *LHS = Primary();
+  unique_ptr<ast::Expression> FileParser::Expression() {
+    auto LHS = Primary();
     if (!LHS) return NULL;
-    return BinOpRHS(0, LHS);
+    return BinOpRHS(0, move(LHS));
   }
 
-  ast::Expression *FileParser::BinOpRHS(int prec, ast::Expression *LHS) {
+  unique_ptr<ast::Expression> FileParser::BinOpRHS(int prec, unique_ptr<ast::Expression> LHS) {
     for (;;) {
       Lexer::Token t = lexer_.PeekToken();
       int tok_prec = GetTokPrecedence(t);
@@ -384,17 +354,17 @@ namespace {
       llvm::StringRef binop = t.val_;
       lexer_.ReadToken();
 
-      ast::Expression *RHS = Primary();
+      auto RHS = Primary();
       if (!RHS) return NULL;
 
       t = lexer_.PeekToken();
       int next_prec = GetTokPrecedence(t);
       if (tok_prec < next_prec || (tok_prec == next_prec && tok_prec % 2)) {
-        RHS = BinOpRHS(tok_prec, RHS);
+        RHS = BinOpRHS(tok_prec, move(RHS));
         if (!RHS) return NULL;
       }
 
-      LHS = new ast::BinaryOperation(binop, LHS, RHS);
+      LHS = unique_ptr<ast::Expression>(new ast::BinaryOperation(binop, move(LHS), move(RHS)));
     }
   }
 
@@ -423,14 +393,10 @@ namespace {
   }
 }
 
-bool Parser::ImportFile(const string& path) {
-  return false;
-}
-
-Messages Parser::Parse(const string& contents, const string& name) {
-  Messages msgs;
-  FileParser parser(ctx_, msgs, name, contents);
-  ast::TopLevel *ast = parser.Parse();
+unique_ptr<Messages> Parser::Parse(const string& contents, const string& name) {
+  auto msgs = unique_ptr<Messages>(new Messages);
+  FileParser parser(ctx_, *msgs, name, contents);
+  auto ast = parser.Parse();
   if (!ast)
     return msgs;
 
@@ -439,7 +405,7 @@ Messages Parser::Parse(const string& contents, const string& name) {
   return msgs;
 }
 
-Messages Parser::ParseFile(const string& path) {
+unique_ptr<Messages> Parser::ParseFile(const string& path) {
   string contents = ReadFile(path);
   return Parse(contents, path);
 }

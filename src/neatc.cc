@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
   }
 
   Parser parser(argv[1]);
-  Messages errs = parser.ParseFile(argv[1]);
-  for (auto& msg : errs.messages()) {
+  auto errs = parser.ParseFile(argv[1]);
+  for (auto& msg : errs->messages()) {
     fprintf(stderr, "%s\n", msg.msg().c_str());
   }
 

@@ -23,9 +23,9 @@ namespace ast {
   };
 
   struct Program : TopLevel {
-    std::vector<TopLevel*> stmts_;
+    std::vector<std::unique_ptr<TopLevel>> stmts_;
     virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>);
-    void Append(TopLevel *stmt) { stmts_.push_back(stmt); }
+    void Append(std::unique_ptr<TopLevel> stmt) { stmts_.push_back(std::move(stmt)); }
   };
 
   struct Function : TopLevel {
@@ -33,41 +33,42 @@ namespace ast {
     llvm::Type *rettype_;
     std::vector<llvm::StringRef> name_args_;
     std::vector<llvm::Type*> type_args_;
-    std::vector<Statement*> stmts_;
+    std::vector<std::unique_ptr<Statement>> stmts_;
     Function(llvm::StringRef name) : name_(name), rettype_(NULL) {}
     virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>);
-    void Append(Statement *stmt) { stmts_.push_back(stmt); }
+    void Append(std::unique_ptr<Statement> stmt) { stmts_.push_back(std::move(stmt)); }
   };
 
   struct VariableAssignment : Statement {
     llvm::StringRef name_;
-    Expression *expr_;
-    VariableAssignment(llvm::StringRef name, Expression *expr)
-      : name_(name), expr_(expr) {}
+    std::unique_ptr<Expression> expr_;
+    VariableAssignment(llvm::StringRef name, std::unique_ptr<Expression> expr)
+      : name_(name), expr_(std::move(expr)) {}
     virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
   };
 
   struct ExpressionStatement : Statement {
-    Expression *expr_;
-    ExpressionStatement(Expression *expr) : expr_(expr) {}
+    std::unique_ptr<Expression> expr_;
+    ExpressionStatement(std::unique_ptr<Expression> expr)
+      : expr_(std::move(expr)) {}
     virtual void Codegen(llvm::IRBuilder<>& irb, llvm::Module& m, std::shared_ptr<Scope> scope) {
       (void) expr_->Codegen(irb, m, scope);
     }
   };
 
   struct If : Statement {
-    Expression *expr_;
-    std::vector<Statement*> then_stmts_;
-    std::vector<Statement*> else_stmts_;
-    If(Expression *expr) : expr_(expr) {}
+    std::unique_ptr<Expression> expr_;
+    std::vector<std::unique_ptr<Statement>> then_stmts_;
+    std::vector<std::unique_ptr<Statement>> else_stmts_;
+    If(std::unique_ptr<Expression> expr) : expr_(std::move(expr)) {}
     virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
-    void AppendThen(Statement *stmt) { then_stmts_.push_back(stmt); }
-    void AppendElse(Statement *stmt) { else_stmts_.push_back(stmt); }
+    void AppendThen(std::unique_ptr<Statement> stmt) { then_stmts_.push_back(std::move(stmt)); }
+    void AppendElse(std::unique_ptr<Statement> stmt) { else_stmts_.push_back(std::move(stmt)); }
   };
 
   struct Return : Statement {
-    Expression *expr_;
-    Return(Expression *expr) : expr_(expr) {}
+    std::unique_ptr<Expression> expr_;
+    Return(std::unique_ptr<Expression> expr) : expr_(std::move(expr)) {}
     virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
   };
 
@@ -88,25 +89,25 @@ namespace ast {
 
   struct UnaryOperation : Expression {
     llvm::StringRef oper_;
-    Expression *expr_;
-    UnaryOperation(llvm::StringRef oper, Expression *expr)
-      : oper_(oper), expr_(expr) {}
+    std::unique_ptr<Expression> expr_;
+    UnaryOperation(llvm::StringRef oper, std::unique_ptr<Expression> expr)
+      : oper_(oper), expr_(std::move(expr)) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
   };
 
   struct BinaryOperation : Expression {
     llvm::StringRef oper_;
-    Expression *LHS_, *RHS_;
-    BinaryOperation(llvm::StringRef oper, Expression *LHS, Expression *RHS)
-      : oper_(oper), LHS_(LHS), RHS_(RHS) {}
+    std::unique_ptr<Expression> LHS_, RHS_;
+    BinaryOperation(llvm::StringRef oper, std::unique_ptr<Expression> LHS, std::unique_ptr<Expression> RHS)
+      : oper_(oper), LHS_(std::move(LHS)), RHS_(std::move(RHS)) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
   };
 
   struct CallOperation : Expression {
-    Expression *expr_;
-    std::vector<Expression*> args_;
-    CallOperation(Expression *expr)
-      : expr_(expr) {}
+    std::unique_ptr<Expression> expr_;
+    std::vector<std::unique_ptr<Expression>> args_;
+    CallOperation(std::unique_ptr<Expression> expr)
+      : expr_(std::move(expr)) {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
   };
 }
