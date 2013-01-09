@@ -1,6 +1,8 @@
 
 #include "ast.h"
 #include "scope.h"
+#include <llvm/PassManager.h>
+#include <llvm/Transforms/Scalar.h>
 using std::shared_ptr;
 using namespace llvm;
 
@@ -35,6 +37,10 @@ namespace ast {
 
     if (irb.GetInsertBlock()->getTerminator() == NULL)
       irb.CreateRetVoid();
+
+    llvm::FunctionPassManager pm(&m);
+    pm.add(llvm::createCFGSimplificationPass());
+    pm.run(*f);
   }
 
   void VariableAssignment::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
@@ -46,11 +52,14 @@ namespace ast {
 
   void If::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     LLVMContext& ctx = irb.getContext();
-    BasicBlock *start = irb.GetInsertBlock();
-    llvm::Function *f = start->getParent();
+    llvm::Function *f = irb.GetInsertBlock()->getParent();
+    BasicBlock *if_ = BasicBlock::Create(ctx, "", f);
     BasicBlock *then = BasicBlock::Create(ctx);
     BasicBlock *else_ = BasicBlock::Create(ctx);
-    BasicBlock *end = NULL;
+    BasicBlock *end = BasicBlock::Create(ctx);
+
+    irb.CreateBr(if_);
+    irb.SetInsertPoint(if_);
 
     Value *expr = expr_->Codegen(irb, m, scope);
     Value *cond = irb.CreateICmpNE(expr, ConstantInt::get(expr->getType(), 0));
@@ -64,11 +73,8 @@ namespace ast {
       stmt->Codegen(irb, m, thenScope);
     }
 
-    if (then->getTerminator() == NULL) {
-      if (!end)
-        end = BasicBlock::Create(ctx);
+    if (then->getTerminator() == NULL)
       irb.CreateBr(end);
-    }
 
     f->getBasicBlockList().push_back(else_);
     irb.SetInsertPoint(else_);
@@ -78,16 +84,11 @@ namespace ast {
       stmt->Codegen(irb, m, elseScope);
     }
 
-    if (else_->getTerminator() == NULL) {
-      if (!end)
-        end = BasicBlock::Create(ctx);
+    if (else_->getTerminator() == NULL)
       irb.CreateBr(end);
-    }
 
-    if (end) {
-      f->getBasicBlockList().push_back(end);
-      irb.SetInsertPoint(end);
-    }
+    f->getBasicBlockList().push_back(end);
+    irb.SetInsertPoint(end);
   }
 
   void While::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {

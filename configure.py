@@ -18,7 +18,7 @@ def call(*k):
 llvm_config = find_llvm_config()
 cflags = '-std=c++11 ' + call(llvm_config, '--cflags')
 ldflags = call(llvm_config, '--ldflags') + ' ' + \
-    call(llvm_config, '--libs', 'core', 'object')
+    call(llvm_config, '--libs', 'core', 'object', 'scalaropts')
 
 n = ninja_syntax.Writer(open('build.ninja', 'w'))
 n.variable('builddir', 'build')
