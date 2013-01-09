@@ -22,6 +22,8 @@ struct Lexer {
       FN,
       VAR,
       RETURN,
+      BREAK,
+      CONTINUE,
       ARROW,
       PAREN,
       UNKNOWN,

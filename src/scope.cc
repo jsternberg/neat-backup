@@ -23,6 +23,16 @@ bool Scope::define(llvm::StringRef name, llvm::AllocaInst *var) {
   return true;
 }
 
+const Scope::Block *Scope::block(llvm::StringRef name) const {
+  if (block_)
+    return block_.get();
+  return parent_ ? parent_->block(name) : nullptr;
+}
+
 shared_ptr<Scope> Scope::derive() const {
   return shared_ptr<Scope>(new Scope(shared_from_this()));
+}
+
+shared_ptr<Scope> Scope::derive(llvm::BasicBlock *start, llvm::BasicBlock *end) const {
+  return shared_ptr<Scope>(new Scope(shared_from_this(), start, end));
 }

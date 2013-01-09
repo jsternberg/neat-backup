@@ -93,6 +93,8 @@ namespace {
     unique_ptr<ast::Statement> If();
     unique_ptr<ast::Statement> While();
     unique_ptr<ast::Statement> Return();
+    unique_ptr<ast::Statement> Break();
+    unique_ptr<ast::Statement> Continue();
     unique_ptr<ast::Expression> Primary();
     unique_ptr<ast::Expression> PrimaryRHS(unique_ptr<ast::Expression> LHS);
     unique_ptr<ast::Expression> Expression();
@@ -213,6 +215,10 @@ namespace {
       if (stmt) break;
       stmt = Return();
       if (stmt) break;
+      stmt = Break();
+      if (stmt) break;
+      stmt = Continue();
+      if (stmt) break;
       {
         auto expr = Expression();
         if (expr) {
@@ -300,6 +306,18 @@ namespace {
     if (!lexer_.ExpectToken(Lexer::Token::RETURN))
       return NULL;
     return unique_ptr<ast::Statement>(new ast::Return(Expression()));
+  }
+
+  unique_ptr<ast::Statement> FileParser::Break() {
+    if (!lexer_.ExpectToken(Lexer::Token::BREAK))
+      return nullptr;
+    return unique_ptr<ast::Statement>(new ast::Break);
+  }
+
+  unique_ptr<ast::Statement> FileParser::Continue() {
+    if (!lexer_.ExpectToken(Lexer::Token::CONTINUE))
+      return nullptr;
+    return unique_ptr<ast::Statement>(new ast::Continue);
   }
 
   unique_ptr<ast::Expression> FileParser::Primary() {

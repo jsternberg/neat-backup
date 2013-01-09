@@ -84,6 +84,14 @@ namespace ast {
     virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
   };
 
+  struct Break : Statement {
+    virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
+  };
+
+  struct Continue : Statement {
+    virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
+  };
+
   struct IntegerLiteral : Expression {
     int value_;
     IntegerLiteral(int value) : value_(value) {}

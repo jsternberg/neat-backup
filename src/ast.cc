@@ -108,11 +108,12 @@ namespace ast {
     f->getBasicBlockList().push_back(then);
     irb.SetInsertPoint(then);
 
-    auto innerScope = scope->derive();
+    auto innerScope = scope->derive(then, end);
     for (auto& stmt : stmts_) {
       stmt->Codegen(irb, m, innerScope);
     }
-    irb.CreateBr(start);
+    if (irb.GetInsertBlock()->getTerminator() == NULL)
+      irb.CreateBr(start);
 
     f->getBasicBlockList().push_back(end);
     irb.SetInsertPoint(end);
@@ -120,6 +121,20 @@ namespace ast {
 
   void Return::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     irb.CreateRet(expr_ ? expr_->Codegen(irb, m, scope) : NULL);
+  }
+
+  void Break::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
+    // TODO: signal an error when break is used incorrectly
+    const Scope::Block *block = scope->block();
+    if (block)
+      irb.CreateBr(block->second);
+  }
+
+  void Continue::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
+    // TODO: signal an error when continue is used incorrectly
+    const Scope::Block *block = scope->block();
+    if (block)
+      irb.CreateBr(block->first);
   }
 
   Value *IntegerLiteral::Codegen(IRBuilder<>& irb, Module&, shared_ptr<Scope>) {
