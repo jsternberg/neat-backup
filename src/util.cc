@@ -14,6 +14,7 @@ std::string ReadFile(const std::string& path) {
   }
 
   if (ferror(fd))
-    return std::string();
+    contents.clear();
+  fclose(fd);
   return contents;
 }
