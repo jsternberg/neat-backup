@@ -10,14 +10,17 @@
 
 namespace ast {
   struct TopLevel {
+    virtual ~TopLevel() {}
     virtual void Codegen(llvm::Module&, std::shared_ptr<Scope>) = 0;
   };
 
   struct Statement {
+    virtual ~Statement() {}
     virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>) = 0;
   };
 
   struct Expression {
+    virtual ~Expression() {}
     virtual llvm::Value *Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>) = 0;
     virtual llvm::AllocaInst *lvalue(std::shared_ptr<Scope>) const { return NULL; }
   };
