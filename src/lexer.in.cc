@@ -27,6 +27,7 @@ void Lexer::ReadToken() {
     /*!re2c
     "if"   { get_token(p, Token::IF); return; }
     "else" { get_token(p, Token::ELSE); return; }
+    "while" { get_token(p, Token::WHILE); return; }
     "fn"   { get_token(p, Token::FN); return; }
     "var"  { get_token(p, Token::VAR); return; }
     "return" { get_token(p, Token::RETURN); return; }

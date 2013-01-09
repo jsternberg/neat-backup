@@ -70,6 +70,14 @@ namespace ast {
     void AppendElse(std::unique_ptr<Statement> stmt) { else_stmts_.push_back(std::move(stmt)); }
   };
 
+  struct While : Statement {
+    std::unique_ptr<Expression> expr_;
+    std::vector<std::unique_ptr<Statement>> stmts_;
+    While(std::unique_ptr<Expression> expr) : expr_(std::move(expr)) {}
+    virtual void Codegen(llvm::IRBuilder<>&, llvm::Module&, std::shared_ptr<Scope>);
+    void Append(std::unique_ptr<Statement> stmt) { stmts_.push_back(std::move(stmt)); }
+  };
+
   struct Return : Statement {
     std::unique_ptr<Expression> expr_;
     Return(std::unique_ptr<Expression> expr) : expr_(std::move(expr)) {}

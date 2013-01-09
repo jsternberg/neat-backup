@@ -18,6 +18,7 @@ struct Lexer {
       SEMICOLON,
       IF,
       ELSE,
+      WHILE,
       FN,
       VAR,
       RETURN,

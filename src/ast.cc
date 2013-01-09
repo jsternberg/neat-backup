@@ -90,6 +90,33 @@ namespace ast {
     }
   }
 
+  void While::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
+    LLVMContext& ctx = irb.getContext();
+    llvm::Function *f = irb.GetInsertBlock()->getParent();
+    BasicBlock *start = BasicBlock::Create(ctx, "", f);
+    BasicBlock *then = BasicBlock::Create(ctx);
+    BasicBlock *end = BasicBlock::Create(ctx);
+
+    irb.CreateBr(start);
+    irb.SetInsertPoint(start);
+
+    Value *expr = expr_->Codegen(irb, m, scope);
+    Value *cond = irb.CreateICmpNE(expr, ConstantInt::get(expr->getType(), 0));
+    irb.CreateCondBr(cond, then, end);
+
+    f->getBasicBlockList().push_back(then);
+    irb.SetInsertPoint(then);
+
+    auto innerScope = scope->derive();
+    for (auto& stmt : stmts_) {
+      stmt->Codegen(irb, m, innerScope);
+    }
+    irb.CreateBr(start);
+
+    f->getBasicBlockList().push_back(end);
+    irb.SetInsertPoint(end);
+  }
+
   void Return::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
     irb.CreateRet(expr_ ? expr_->Codegen(irb, m, scope) : NULL);
   }

@@ -91,6 +91,7 @@ namespace {
     unique_ptr<ast::Statement> Statement();
     unique_ptr<ast::Statement> Var();
     unique_ptr<ast::Statement> If();
+    unique_ptr<ast::Statement> While();
     unique_ptr<ast::Statement> Return();
     unique_ptr<ast::Expression> Primary();
     unique_ptr<ast::Expression> PrimaryRHS(unique_ptr<ast::Expression> LHS);
@@ -206,6 +207,8 @@ namespace {
     for (;;) {
       stmt = If();
       if (stmt) return stmt;
+      stmt = While();
+      if (stmt) return stmt;
       stmt = Var();
       if (stmt) break;
       stmt = Return();
@@ -272,6 +275,25 @@ namespace {
         return NULL;
     }
     return move(if_);
+  }
+
+  unique_ptr<ast::Statement> FileParser::While() {
+    if (!lexer_.ExpectToken(Lexer::Token::WHILE))
+      return NULL;
+
+    auto while_ = unique_ptr<ast::While>(new ast::While(Expression()));
+    if (!ExpectToken(Lexer::Token::BRACKET, "{"))
+      return NULL;
+
+    unique_ptr<ast::Statement> stmt = NULL;
+    while ((stmt = Statement()) != NULL) {
+      while_->Append(move(stmt));
+    }
+
+    if (!ExpectToken(Lexer::Token::BRACKET, "}"))
+      return NULL;
+
+    return move(while_);
   }
 
   unique_ptr<ast::Statement> FileParser::Return() {
