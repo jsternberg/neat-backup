@@ -32,6 +32,9 @@ namespace ast {
     for (auto& stmt : stmts_) {
       stmt->Codegen(irb, m, innerScope);
     }
+
+    if (irb.GetInsertBlock()->getTerminator() == NULL)
+      irb.CreateRetVoid();
   }
 
   void VariableAssignment::Codegen(IRBuilder<>& irb, Module& m, shared_ptr<Scope> scope) {
