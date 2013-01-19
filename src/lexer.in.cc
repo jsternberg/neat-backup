@@ -15,7 +15,6 @@ void Lexer::ReadToken() {
   */
 
   SkipWhitespace();
-  const char *p = contents_.data();
   cur_.clear();
 
   if (contents_.empty()) {
@@ -23,6 +22,7 @@ void Lexer::ReadToken() {
     return;
   }
 
+  const char *p = contents_.data();
   for (;;) {
     /*!re2c
     "if"   { get_token(p, Token::IF); return; }
@@ -51,10 +51,38 @@ void Lexer::ReadToken() {
 }
 
 void Lexer::SkipWhitespace() {
-  size_t n = 0;
-  while (n < contents_.size() && isspace(contents_[n]))
-    ++n;
-  drop_front(n);
+  const char *p = contents_.data();
+  while (*p) {
+    if (isspace(*p)) {
+      ++p; continue;
+    } else if (*p == '/') {
+      if (p[1] == '/') {
+        p += 2;
+        while (*p && *p != '\n')
+          ++p;
+        continue;
+      } else if (p[1] == '*') {
+        p += 2;
+        size_t depth = 1;
+        while (*p && depth) {
+          if (*p == '*' && p[1] == '/') {
+            p += 2;
+            --depth;
+          } else if (*p == '/' && p[1] == '*') {
+            p += 2;
+            ++depth;
+          } else {
+            ++p;
+          }
+        }
+        continue;
+      }
+    }
+    break;
+  }
+
+  // TODO: need some way to report errors when comments are not terminated
+  drop_front(p-contents_.data());
 }
 
 Lexer::LineInfo Lexer::GetLineInfo() const {
